@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "wispstation-rrs"
+version = "0.1.0"
+description = "Quality-filtered remote sensing reflectance from WISPstation L1 data with the 3C model"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "GPL-3.0-or-later" }
+authors = [{ name = "Mortimer Werther" }]
+dependencies = [
+    "numpy>=1.24",
+    "scipy>=1.10",
+    "pandas>=2.0",
+    "netCDF4>=1.6",
+    "pvlib>=0.10",
+    "lmfit>=1.0.3",
+    "jax>=0.4.20",
+    "jaxlib>=0.4.20",
+    "tqdm>=4.60",
+    "matplotlib>=3.7",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7"]
+
+[project.scripts]
+wisp-rrs = "wispstation_rrs.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"*" = ["*.csv", "*.json", "*.txt", "*.A", "*.npz", "LICENSE*", "NOTICE*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
