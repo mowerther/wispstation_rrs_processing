@@ -1,6 +1,6 @@
-# Meteorological values of the 3C fits of the paper processing of the three example days, one row per measurement.
-# Relative humidity and air pressure: COSMO, nearest hour. Water temperature: 20 degC at Greifensee and
-# Lake Geneva, COSMO 2 m air temperature at Lake Trasimeno.
+# Meteorological inputs of the 3C fits of the paper processing for the three example days, one row per measurement.
+# Relative humidity and air pressure of the COSMO weather model (Consortium for Small-scale Modelling), nearest hour.
+# Water temperature as used by the fits.
 time_utc,station,rh_percent,pressure_hpa,water_temperature_c
 2022-06-18T04:00:05+00:00,GFN,77.52284241,1023.56,20.0
 2022-06-18T06:00:05+00:00,GFN,69.77183533,1023.28,20.0

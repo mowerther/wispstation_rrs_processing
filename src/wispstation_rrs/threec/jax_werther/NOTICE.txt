@@ -9,14 +9,15 @@ distributed under GPL-3.0-or-later (full text in LICENSE at the root of this rep
 Reference papers:
 Groetsch, P. M. M., Gege, P., Simis, S. G. H., Eleveld, M. A., and Peters, S. W. M. Validation
 of a spectral correction procedure for sun and sky reflections in above-water reflectance
-measurements. Optics Express 25(16), A742-A761 (2017). https://doi.org/10.1364/OE.25.00A742
+measurements. Optics Express 25(16), A742–A761 (2017). https://doi.org/10.1364/OE.25.00A742
 
 Files
   model.py        3C model, cost, jax.grad Jacobian and lmfit L-BFGS-B fit of the paper processing
   adapter.py      interface of this repository (parameters, weights and inputs per measurement)
   spectra/        phyto.A, water.A and Y.A of the 3C repository, daWdT.txt (temperature gradient
-                  of pure water absorption, Roettgers et al., WOPP ATBD revision 7, 2013)
+                  of pure water absorption, Roettgers et al., Algorithm Theoretical Basis
+                  Document of the Water Optical Properties Processor (WOPP), revision 7, 2013)
 
 Changes against the code of the paper processing (Mortimer Werther, 2026-10-28)
   model.py: plotting and the timing printout are removed. fit_LuEd_compiled compiles the cost and
-  the gradient once per model. It gives bitwise the results of fit_LuEd.
+  the gradient once per model. fit_LuEd_compiled gives bitwise the results of fit_LuEd.
