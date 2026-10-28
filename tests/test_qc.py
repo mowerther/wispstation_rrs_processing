@@ -17,7 +17,8 @@ HERE = Path(__file__).resolve().parent
 EXAMPLES = HERE.parent / "examples"
 DATA = HERE / "data"
 
-# window MAPE and day MAPE (%) of the paper tables, EdMax pooled over plus or minus 15 days
+# window MAPE and day MAPE (%) with EdMax pooled over plus or minus 15 days of the full archives:
+# paper tables for GFN and TRS012, the same computation for LXP 2025-05-28 (not in the paper tables)
 PAPER = {"GFN": (2.311069330930203, 6.467613114640451), "LXP": (80.80407108907062, 70.57195141255733),
          "TRS012": (0.49907432396665025, 21.456526014926457)}
 DECISION = {"GFN": "retain", "LXP": "reject", "TRS012": "retain"}
