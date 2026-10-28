@@ -1,0 +1,7 @@
+# EdMax (Ed(560) in W m-2 nm-1) of the three example days: 90th percentile of the Ed(560) values
+# within 15 min of solar noon, pooled over plus or minus 15 days of the full station archives.
+# The three example files alone do not hold this pool (see README).
+station,date_local,ed_max
+GFN,2022-06-18,2.164430192
+LXP,2025-05-28,1.428961194
+TRS012,2025-07-10,1.47793841
