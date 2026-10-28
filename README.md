@@ -46,7 +46,7 @@ conda env create -f environment.yml
 conda activate wispstation_rrs
 ```
 
-The environment installs the package in editable mode with `pip install -e .[dev]`. In an existing Python environment, the same command in the repository folder installs the package and its dependencies (numpy, scipy, pandas, netCDF4, pvlib, lmfit, jax, tqdm, matplotlib).
+The environment installs the package in editable mode with `pip install -e .[dev]`. In an existing Python environment, the same command in the repository folder installs the package and its dependencies (numpy, scipy, pandas, netCDF4, pvlib, lmfit, jax, tqdm, matplotlib). jax and jaxlib stay below version 0.5, the versions of the verification: with jax 0.10, one Greifensee fit of the verification ends without convergence, at an Rrs within 1.5 × 10⁻⁷ sr⁻¹ of the archive.
 
 ## Example run
 
@@ -72,7 +72,7 @@ The run fits 128 measurements in about 20 s with two workers. Two of the three o
 | Lake Geneva, S2C, 2025-05-28 | 80.8 % | 70.6 % | reject | 0 of 2 |
 | Lake Trasimeno, S2A, 2025-07-10 | 0.5 % | 21.5 % | retain | 2 of 2 |
 
-The Lake Geneva measurements in the window also fail the QWIP criterion, with scores of 0.39 and 0.57. The option `--threec o25` repeats the run with 3C-O25.
+With the default `jax`, the Lake Geneva measurements in the window also fail the QWIP criterion, with scores of 0.39 and 0.57. The option `--threec o25` repeats the run with 3C-O25 and gives the same three decisions.
 
 ## Inputs
 
@@ -190,7 +190,7 @@ In the measurements table, the illumination window is centred on the measurement
 
 ### Columns of the pairs table
 
-`overpass_id`, `product`, `platform`, `sensor`, `overpass_time_utc`, `delta_min` (measurement time minus overpass time), `abs_delta_min`, `in_window`, `is_closest` (nearest measurement in the window), `is_closest_usable` (nearest usable measurement in the window), `insitu_usable`, `reason`, `illum_decision`, `illum_reason_overpass`, `illum_mape_window`, `illum_mape_day`, `illum_n_points_window`, `illum_ed_max`, then all columns of the measurements table.
+`station`, `overpass_id`, `product`, `platform`, `sensor`, `overpass_time_utc`, `time_utc`, `time_local`, `delta_min` (measurement time minus overpass time), `abs_delta_min`, `in_window`, `is_closest` (nearest measurement in the window), `is_closest_usable` (nearest usable measurement in the window), `insitu_usable`, `reason`, `illumination_ok`, `illum_decision`, `illum_reason_overpass`, `illum_mape_window`, `illum_mape_day`, `illum_n_points_window`, `illum_ed_max`, `measurement_index` (row of the measurement in the measurements table of its station), then the other columns of the measurements table. The illumination columns centred on the measurement (`illum_n_points`, `illum_mape`, `illum_reason`) are left out.
 
 The measurements in the window that are not usable, with the criteria they do not meet:
 
@@ -201,7 +201,7 @@ pairs = pd.read_csv("example_output/insitu_overpass_pairs.csv")
 print(pairs.loc[pairs["in_window"] & ~pairs["insitu_usable"], ["station", "time_utc", "delta_min", "reason"]])
 ```
 
-In the example, the two Lake Geneva measurements of 28 May 2025 have the reason `QWIP+ILLUMINATION`.
+In the example with the default `jax`, the two Lake Geneva measurements of 28 May 2025 have the reason `QWIP+ILLUMINATION`.
 
 ## Quality criteria
 
@@ -217,7 +217,7 @@ A measurement is usable when it meets every criterion of the table. Each criteri
 | `qwip_ok` | Absolute QWIP score at most `--qwip-max` | `QWIP` | 0.2 |
 | `illumination_ok` | Ed(560) MAPE in the window at most `--mape-max` | `ILLUMINATION` | 20 % |
 
-Measurements with spectra that are not finite or not positive, and measurements with the sun below the horizon, are not fitted. The column `threec_converged` holds the convergence flag of the optimiser for information. The paper processing kept every fit, and the criterion `threec_ok` follows it.
+Measurements with spectra that are not finite or not positive, and measurements with the sun below the horizon, are not fitted. 3C-O25 accepts solar zenith angles up to 87.5°, and above that limit its fit stops with a message in `threec_message`. The column `threec_converged` holds the convergence flag of the optimiser for information. The paper processing kept every fit, and the criterion `threec_ok` follows it.
 
 ### QWIP
 
@@ -255,7 +255,7 @@ lmfit clips an input outside its bounds to the bound, and the column `p_pressure
 
 ### `o25`: 3C-O25 (Pitarch, 2026)
 
-3C-O25 version 1.0.4 (https://github.com/jaipipor/3C-Rrs-O25, commit 54782ca) is included in `src/wispstation_rrs/threec/o25_pitarch` without changes to the model code or its data. The configuration follows the time series example of 3C-O25: parameter set and weights of the example, air mass type 4, the `leastsq` method of lmfit, and the view zenith and relative azimuth of the station. 3C-O25 does not use the water temperature. The retrieved Rrs is Lu/Ed minus the modelled glint Rg.
+3C-O25 version 1.0.4 (https://github.com/jaipipor/3C-Rrs-O25, commit 54782ca) is included in `src/wispstation_rrs/threec/o25_pitarch` without changes to the model code or its data. The configuration follows the time series example of 3C-O25: parameter set and weights of the example, air mass type 4, the `leastsq` method of lmfit, and the view zenith and relative azimuth of the station. 3C-O25 does not use the water temperature and accepts solar zenith angles up to 87.5°. The retrieved Rrs is Lu/Ed minus the modelled glint Rg.
 
 On the example days, the Rrs of the two implementations differ by up to 9 × 10⁻³ sr⁻¹ at 400–700 nm, and by up to 5 × 10⁻³ sr⁻¹ for the measurements in the matchup windows. QWIP and band values depend on the implementation chosen, and `run_settings.json` records it.
 
@@ -280,7 +280,7 @@ pytest
 
 | Part | Reference | Agreement |
 | --- | --- | --- |
-| 3C JAX | Archived Rrs of the paper processing, 12 measurements of the three example days, with the archived inputs | within 1.4 × 10⁻⁷ sr⁻¹ at Greifensee (archive with three significant digits), 2 × 10⁻¹¹ sr⁻¹ at Lake Geneva and Lake Trasimeno |
+| 3C JAX | Archived Rrs of the paper processing, 12 measurements of the three example days, with the archived inputs | within 1.4 × 10⁻⁷ sr⁻¹ at Greifensee (archive with three significant digits), 2 × 10⁻¹¹ sr⁻¹ at Lake Geneva and Lake Trasimeno, with jax 0.4 |
 | Full run with pvlib geometry and the example meteo file | Same archived Rrs at Lake Trasimeno | within 10⁻⁷ sr⁻¹ |
 | 3C-O25 | Upstream version 1.0.4, on its example spectrum and one Lake Geneva measurement | bitwise equal |
 | Solar zenith angle | Angles of the paper processing | within 0.006° |

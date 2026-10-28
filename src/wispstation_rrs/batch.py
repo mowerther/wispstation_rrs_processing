@@ -112,7 +112,7 @@ def _task_key(model: str, options: dict, args: dict) -> str:
 
 
 def _save_cache(path: Path, keys: list, results: list) -> None:
-    names = sorted({k for r in results for k in r.params})
+    names = list(dict.fromkeys(k for r in results for k in r.params))  # parameter order of the model
     params = np.array([[r.params.get(k, np.nan) for k in names] for r in results], dtype=float).reshape(len(results), len(names))
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(".tmp.npz")
@@ -264,7 +264,8 @@ def _threec_columns(base: pd.DataFrame, tasks: list, results: dict, settings: Se
     for t in tasks:
         i, res = t["index"], results[t["key"]]
         rrs[i] = res.rrs
-        cols["threec_fitted"][i] = True
+        # a fit that raised (for example an input outside the range of the model) has no parameters
+        cols["threec_fitted"][i] = bool(res.params)
         cols["threec_converged"][i] = bool(res.success)
         cols["threec_cost"][i] = res.cost
         cols["threec_nfev"][i] = res.nfev

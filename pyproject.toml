@@ -17,8 +17,8 @@ dependencies = [
     "netCDF4>=1.6",
     "pvlib>=0.10",
     "lmfit>=1.0.3",
-    "jax>=0.4.20",
-    "jaxlib>=0.4.20",
+    "jax>=0.4.20,<0.5",
+    "jaxlib>=0.4.20,<0.5",
     "tqdm>=4.60",
     "matplotlib>=3.7",
 ]
@@ -33,7 +33,7 @@ wisp-rrs = "wispstation_rrs.cli:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-"*" = ["*.csv", "*.json", "*.txt", "*.A", "*.npz", "LICENSE*", "NOTICE*"]
+"*" = ["*.csv", "*.json", "*.txt", "*.md", "*.A", "*.npz", "LICENSE*", "NOTICE*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

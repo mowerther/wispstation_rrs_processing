@@ -16,12 +16,14 @@ import pytest
 
 from wispstation_rrs.threec import get_model
 from wispstation_rrs.threec.o25_pitarch.adapter import fold_azimuth
+from wispstation_rrs.threec.o25_pitarch import data as o25_data
 from wispstation_rrs.threec.o25_pitarch.model import rrs_model_3C_O25
 
 HERE = Path(__file__).resolve().parent
 DATA = HERE / "data"
 L1 = HERE.parent / "examples" / "l1"
-PACKAGE_DATA = HERE.parent / "src" / "wispstation_rrs" / "threec" / "o25_pitarch" / "data"
+# the installed data folder, in an editable and in a normal installation
+PACKAGE_DATA = Path(o25_data.__file__).resolve().parent
 TOL = 1e-9
 
 

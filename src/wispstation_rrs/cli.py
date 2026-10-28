@@ -71,7 +71,7 @@ def _run_process(a) -> int:
     tables = process(l1, a.out, s, products=a.products, times=a.times, meteo=a.meteo, edmax=a.edmax,
                      station=station)
     m = tables["measurements"]
-    print(f"{len(m)} measurements, {int(m['threec_fitted'].sum())} fitted, {int(m['insitu_usable'].sum())} usable")
+    print(f"{len(m)} measurements, {int(m['threec_ok'].sum())} with 3C Rrs, {int(m['insitu_usable'].sum())} usable")
     if len(tables["summary"]):
         o = tables["summary"]
         print(f"{len(o)} overpasses with measurements, {int(o['matchup_usable'].sum())} with a usable measurement")

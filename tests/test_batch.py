@@ -104,6 +104,8 @@ def test_resume_takes_the_cache(run, l1, monkeypatch):
     again = process(l1, out, Settings(fit="window", workers=1, progress=False, plots=False),
                     products=EXAMPLES / "overpasses.txt", meteo=EXAMPLES / "meteo.csv", edmax=EXAMPLES / "edmax.csv")
     pd.testing.assert_frame_equal(again["hyperspectral"], tables["hyperspectral"])
+    # parameter columns keep the order of the model
+    assert list(again["measurements"].columns) == list(tables["measurements"].columns)
 
 
 def test_plot_folder(run):
@@ -119,7 +121,8 @@ def test_without_overpasses(l1, tmp_path, monkeypatch):
     tables = process(l1, tmp_path, Settings(workers=1, progress=False, plots=False))
     assert not (tmp_path / "insitu_overpass_pairs.csv").exists()
     m = tables["measurements"]
-    assert len(calls) == m["threec_fitted"].sum() > 0
+    # the stand-in fit raises nothing but returns no parameters, as a fit that raised
+    assert len(calls) == (m["threec_message"] == "skipped").sum() > 0 and not m["threec_fitted"].any()
     assert m["illum_n_points"].max() >= 1 and not m["threec_ok"].any()
 
 
