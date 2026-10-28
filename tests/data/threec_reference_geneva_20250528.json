@@ -1,0 +1,10 @@
+{
+ "station": "geneva",
+ "date": "2025-05-28",
+ "l1_file": "L1_Lexplore_Sprectral_20250528_060005.nc",
+ "l1_sha256": "c0af8f9e7a92425fd9b0c57dd4cd2d8c445f42c03455caa4b228d1d251a53c0f",
+ "source": "archived 3C Rrs of the paper processing (JAX implementation), text copied unchanged",
+ "columns": "Rrs_350..Rrs_900 in sr-1",
+ "inputs": "sza, theta_view, rh, pressure and water_temp are the inputs of the archived fit",
+ "water_temp_note": "water temperature: empty means not set, T_w keeps the initial 20 degC"
+}

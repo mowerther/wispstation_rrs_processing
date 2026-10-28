@@ -1,0 +1,10 @@
+{
+ "station": "greifensee",
+ "date": "2022-06-18",
+ "l1_file": "L1B_Lake_Greifen_Sprectral_20220618_040005.nc",
+ "l1_sha256": "fce21010fe4df075ae2ffb0b2c94f54ec363fa022ee286f234f2920c1a567f8a",
+ "source": "archived 3C Rrs of the paper processing (JAX implementation), text copied unchanged",
+ "columns": "Rrs_350..Rrs_900 in sr-1",
+ "inputs": "sza, theta_view, rh, pressure and water_temp are the inputs of the archived fit",
+ "water_temp_note": "water temperature: empty means not set, T_w keeps the initial 20 degC"
+}

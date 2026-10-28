@@ -1,0 +1,88 @@
+{
+ "source": "3C-Rrs-O25 v1.0.4 (commit 54782ca7deb60a4b2c10ab23701e47cd824a8b21), vendored copy",
+ "produced_with": {
+  "scipy": "1.17.1",
+  "lmfit": "1.3.4",
+  "numpy": "2.2.6"
+ },
+ "upstream_and_vendored_bitwise_equal": {
+  "example": true,
+  "wisp_geneva": true
+ },
+ "example": {
+  "input": "threec_o25_example_single_spectrum.csv (upstream examples/example_single_spectrum.csv)",
+  "set_up": "upstream scripts/run_3C.py defaults: build_default_params, build_default_weights",
+  "geom": [
+   59.0,
+   35.0,
+   100.0
+  ],
+  "anc": [
+   4.0,
+   60.0,
+   1013.25
+  ],
+  "method": "leastsq",
+  "params": {
+   "C": 2.8077971830770876,
+   "N": 5.689939752424344,
+   "Y": 0.5984471325451652,
+   "SNAP": 0.028785811636432818,
+   "Sg": 0.010011270165420649,
+   "rho": 0.02,
+   "rho_d": 0.0009505724482361533,
+   "rho_s": 0.00596295705578778,
+   "alpha": 0.20001361631987224,
+   "beta": 0.0499662846069866
+  },
+  "chisqr": 1.6378962171135434e-05,
+  "nfev": 360,
+  "success": true
+ },
+ "wisp_geneva": {
+  "input": {
+   "time_utc": "2025-05-28T10:00:05.303848028+00:00",
+   "l1_file": "L1_Lexplore_Sprectral_20250528_060005.nc",
+   "l1_index": 12,
+   "sza": 30.98396738298802,
+   "vza": 40.0,
+   "raa": 135.0,
+   "rh": 74.4248275756836,
+   "pressure": 1023.34,
+   "am": 4.0
+  },
+  "set_up": "get_model('o25', raa_fallback=135.0).fit(...) with raa missing",
+  "geom": [
+   30.98396738298802,
+   40.0,
+   135.0
+  ],
+  "anc": [
+   4.0,
+   74.4248275756836,
+   1023.34
+  ],
+  "method": "leastsq",
+  "params": {
+   "C": 0.8359255205829058,
+   "N": 0.13927381416523996,
+   "Y": 0.040375431730032996,
+   "SNAP": 0.017388335795633467,
+   "Sg": 0.01764794992467979,
+   "rho": 0.029992849044874894,
+   "rho_d": 0.00914370953806476,
+   "rho_s": 0.01409570804041993,
+   "alpha": 0.016818778931201983,
+   "beta": 0.02203357135135281,
+   "theta_s": 30.98396738298802,
+   "theta_v": 40.0,
+   "phi": 135.0,
+   "am": 4.0,
+   "rh": 74.4248275756836,
+   "pressure": 1023.34
+  },
+  "cost": 9.232745087359898e-05,
+  "nfev": 370,
+  "success": true
+ }
+}

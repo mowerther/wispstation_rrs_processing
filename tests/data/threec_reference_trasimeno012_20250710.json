@@ -1,0 +1,10 @@
+{
+ "station": "trasimeno012",
+ "date": "2025-07-10",
+ "l1_file": "WISPstation012_20250710_L1_SPEC.nc",
+ "l1_sha256": "6e531c5f4e98aa13d33ca715cbb9467c14b3b8fd5160f11761c41e425bd5e9e2",
+ "source": "archived 3C Rrs of the paper processing (JAX implementation), text copied unchanged",
+ "columns": "Rrs_350..Rrs_900 in sr-1",
+ "inputs": "sza, theta_view, rh, pressure and water_temp are the inputs of the archived fit",
+ "water_temp_note": "water temperature: 2 m air temperature of the meteo input, as in the paper processing"
+}

@@ -1,0 +1,23 @@
+3C-Rrs-O25, analytical 3C remote sensing reflectance model, O25 variant
+Author: Jaime Pitarch (National Research Council of Italy)
+Upstream repository: https://github.com/jaipipor/3C-Rrs-O25
+Version: 1.0.4
+Commit: 54782ca7deb60a4b2c10ab23701e47cd824a8b21
+Licence: GPL-3.0-or-later (full text in LICENSE at the root of this repository)
+
+Reference paper:
+Pitarch, J. A general model for sun and sky glint removal in above-water optical
+radiometry: mathematical description and Python code. Earth Science Informatics 19, 78 (2026).
+https://doi.org/10.1007/s12145-026-02114-w
+
+Vendored files
+  src/rrs3c/model.py                                   -> model.py
+  data/G0w.txt, G1w.txt, G0p.txt, G1p.txt              -> data/
+  data/abs_scat_seawater_20d_35PSU_20230922_short.txt  -> data/
+  data/vars_aph_v2.npz                                 -> data/
+  data/__init__.py                                     -> data/__init__.py
+
+Modifications (Mortimer Werther, 2026-10-28)
+  model.py: the import "from . import _data" reads "from . import data as _data", so that the
+  default data folder is the data folder next to model.py. No other change to the code or data.
+  Line endings of model.py are LF.
