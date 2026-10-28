@@ -1,0 +1,79 @@
+{
+  "msi_s2a.csv": {
+    "source": "Sentinel-2 Spectral Response Functions (S2-SRF)",
+    "document": "COPE-GSEG-EOPG-TN-15-0007",
+    "source_file": "COPE-GSEG-EOPG-TN-15-0007 - Sentinel-2 Spectral Response Functions 2024 - 4.0.xlsx",
+    "sheet": "Spectral Responses (S2A)",
+    "release": "4.0",
+    "date": "2024-06-04",
+    "source_sha256": "1a9edc27d692a570911a460d589f188da0fc3e27f0b0bd1ad322059c380519b0",
+    "sha256": "43f05a2d1f60f5f26b7685e0cea2bfd957f6c59165119f363e2e5d8de83cb985"
+  },
+  "msi_s2b.csv": {
+    "source": "Sentinel-2 Spectral Response Functions (S2-SRF)",
+    "document": "COPE-GSEG-EOPG-TN-15-0007",
+    "source_file": "COPE-GSEG-EOPG-TN-15-0007 - Sentinel-2 Spectral Response Functions 2024 - 4.0.xlsx",
+    "sheet": "Spectral Responses (S2B)",
+    "release": "4.0",
+    "date": "2024-06-04",
+    "source_sha256": "1a9edc27d692a570911a460d589f188da0fc3e27f0b0bd1ad322059c380519b0",
+    "sha256": "121fa2d09255403d56b64c831424e4255264cb29dac5e4062320c40e314e88d1"
+  },
+  "msi_s2c.csv": {
+    "source": "Sentinel-2 Spectral Response Functions (S2-SRF)",
+    "document": "COPE-GSEG-EOPG-TN-15-0007",
+    "source_file": "COPE-GSEG-EOPG-TN-15-0007 - Sentinel-2 Spectral Response Functions 2024 - 4.0.xlsx",
+    "sheet": "Spectral Responses (S2C)",
+    "release": "4.0",
+    "date": "2024-06-04",
+    "source_sha256": "1a9edc27d692a570911a460d589f188da0fc3e27f0b0bd1ad322059c380519b0",
+    "sha256": "e1436f783a9f52b1f291617ccbed0abdb32e807446aa7540448e20e4ddf16498"
+  },
+  "msi_bands.csv": {
+    "source": "Sentinel-2 Spectral Response Functions (S2-SRF)",
+    "document": "COPE-GSEG-EOPG-TN-15-0007",
+    "source_file": "COPE-GSEG-EOPG-TN-15-0007 - Sentinel-2 Spectral Response Functions 2024 - 4.0.xlsx",
+    "sheet": "Equivalent Wavelengths (centre_nm), Overview (nominal_centre_nm), Bandwidth and mid-wavelength (mid_bandwidth_nm, bandwidth_nm)",
+    "release": "4.0",
+    "date": "2024-06-04",
+    "source_sha256": "1a9edc27d692a570911a460d589f188da0fc3e27f0b0bd1ad322059c380519b0",
+    "sha256": "cacf47195702eae945da0de3f3e1cc3e2c2373d1df07e9963dd8fb37fda5ca0e"
+  },
+  "olci_s3a.csv": {
+    "source": "Sentinel-3A OLCI platform-mean spectral response function",
+    "source_file": "S3A_OL_SRF_20160713_mean_rsr.nc4",
+    "variables": "mean_spectral_response_function, mean_spectral_response_function_wavelength",
+    "release": "OLCI_S3A_spectral_model_v7.02_fltrd_20160713.nc4",
+    "date": "2016-07-13",
+    "source_sha256": "e2806df83b6a874e1b5ecd98bd56c70368e4bca6c75e6c7bad6b472cdc5fef7d",
+    "sha256": "8b9f8df829dabbfcd91ad0c10bb1889441a850cfaadcde4e1e1e3a8c2e987037"
+  },
+  "olci_s3b.csv": {
+    "source": "Sentinel-3B OLCI platform-mean spectral response function",
+    "source_file": "S3B_OL_SRF_0_20180109_mean_rsr.nc4",
+    "variables": "mean_spectral_response_function, mean_spectral_response_function_wavelength",
+    "release": "OLCI_S3B_spectral_model_V1.01_fltrd_20180109.nc4",
+    "date": "2018-01-09",
+    "source_sha256": "26bfba57971c1c434dd5f1c94f20f128eaa229a46bb3bfbad51c4b22f96e0033",
+    "sha256": "5eac9d6942fea7034fe788bcef607cde80f8202ded3ad50a5b3091d38a39afde"
+  },
+  "olci_bands.csv": {
+    "source": "Sentinel-3 OLCI platform-mean spectral response functions",
+    "variables": "srf_centre_wavelength (centre_nm), nominal_centre_wavelength (nominal_centre_nm), bandwidth_fwhm (fwhm_nm)",
+    "sources": [
+      {
+        "source_file": "S3A_OL_SRF_20160713_mean_rsr.nc4",
+        "release": "OLCI_S3A_spectral_model_v7.02_fltrd_20160713.nc4",
+        "date": "2016-07-13",
+        "source_sha256": "e2806df83b6a874e1b5ecd98bd56c70368e4bca6c75e6c7bad6b472cdc5fef7d"
+      },
+      {
+        "source_file": "S3B_OL_SRF_0_20180109_mean_rsr.nc4",
+        "release": "OLCI_S3B_spectral_model_V1.01_fltrd_20180109.nc4",
+        "date": "2018-01-09",
+        "source_sha256": "26bfba57971c1c434dd5f1c94f20f128eaa229a46bb3bfbad51c4b22f96e0033"
+      }
+    ],
+    "sha256": "551a0569e9070fb57f96688866b08a95c1f9ce5f80ea40431f0903bb5090046c"
+  }
+}
