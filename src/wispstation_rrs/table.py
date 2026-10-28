@@ -49,14 +49,14 @@ def _format_time(series: pd.Series) -> pd.Series:
 
 
 def write_csv(df: pd.DataFrame, path) -> Path:
-    """Write a table with ISO 8601 times (UTC offset kept) and full float precision."""
+    """Write a table with ISO 8601 times (UTC offset kept) and floats with 12 significant digits."""
     path = Path(path)
     out = df.copy()
     for col in out.columns:
         s = out[col]
         if pd.api.types.is_datetime64_any_dtype(s):
             out[col] = _format_time(s)
-    out.to_csv(path, index=False, float_format="%.10g", na_rep="")
+    out.to_csv(path, index=False, float_format="%.12g", na_rep="")
     return path
 
 

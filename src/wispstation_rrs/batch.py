@@ -24,7 +24,7 @@ import pandas as pd
 from . import __version__
 from .geometry import solar_angles
 from .io import meteo_for, read_l1_folder, read_meteo_csv
-from .overpass import pair, read_products, read_times_csv, unique_overpasses
+from .overpass import overpasses_for_station, pair, read_products, read_times_csv, unique_overpasses
 from .qc import IlluminationSettings, l1_flags, qwip, read_edmax_csv
 from .qc.illumination import daily_metrics, ed_series, edmax_by_date, mape_centred, mape_window, modelled_ed
 from .srf import available_sensors, resample
@@ -43,15 +43,17 @@ TABLES = {
 
 @dataclass
 class Settings:
-    """Settings of a run (defaults: the paper processing).
+    """Settings of a run. The criteria and windows default to the settings of the paper.
 
     threec          3C implementation, ``jax`` (Werther) or ``o25`` (Pitarch)
     threec_options  keyword options of the implementation (see ``wispstation_rrs.threec``)
     window_min      matchup window around an overpass (minutes)
+    illum_window_min
+                    window of the illumination MAPE around an overpass or a measurement (minutes)
     context_min     measurements within this time of an overpass are listed in the pairs table
     rh, water_temp, pressure
-                    defaults for measurements without a meteo row (pressure None: from the
-                    station altitude)
+                    defaults for measurements without a meteo row (pressure None: barometric
+                    pressure at the station altitude)
     sensors         sensors of the band Rrs (None: every sensor with a band response file)
     min_coverage    minimum share of the band response covered by the spectrum
     qwip_max        limit of the absolute QWIP score
@@ -65,6 +67,7 @@ class Settings:
     threec: str = "jax"
     threec_options: dict = field(default_factory=dict)
     window_min: float = 15.0
+    illum_window_min: float = 15.0
     context_min: float = 60.0
     rh: float = 60.0
     water_temp: float = 20.0
@@ -82,7 +85,8 @@ class Settings:
     progress: bool = True
 
     def illumination(self) -> IlluminationSettings:
-        return IlluminationSettings(overpass_window_min=float(self.window_min), mape_threshold=float(self.mape_max))
+        return IlluminationSettings(overpass_window_min=float(self.illum_window_min),
+                                    mape_threshold=float(self.mape_max))
 
 
 def load_overpasses(products=None, times=None) -> pd.DataFrame:
@@ -157,8 +161,11 @@ def run_fits(tasks: list, settings: Settings, cache_dir: Path | None = None) -> 
 
     def finished(day):
         if cache_dir is not None:
-            keys = [t["key"] for t in groups[day]]
-            _save_cache(cache_dir / f"{day}.npz", keys, [results[k] for k in keys])
+            # fits of earlier runs of the day stay in the cache next to the new ones
+            path = cache_dir / f"{day}.npz"
+            kept = _load_cache(path) if path.is_file() else {}
+            kept.update({t["key"]: results[t["key"]] for t in groups[day]})
+            _save_cache(path, list(kept), list(kept.values()))
 
     if not pending:
         return results
@@ -338,8 +345,9 @@ def _pairs_and_summary(base: pd.DataFrame, meas: pd.DataFrame, overpasses: pd.Da
         win = g[g["in_window"]]
         closest = win[win["is_closest"]]
         usable = win[win["is_closest_usable"]]
-        row = {"station": sp.station, "overpass_id": oid, "product": o["product"], "platform": o["platform"],
-               "sensor": o["sensor"], "overpass_time_utc": o["time_utc"], "n_context": len(g), "n_in_window": len(win),
+        row = {"station": sp.station, "overpass_id": oid, "product": o["product"], "tile": o.get("tile", ""),
+               "platform": o["platform"], "sensor": o["sensor"], "overpass_time_utc": o["time_utc"],
+               "n_context": len(g), "n_in_window": len(win),
                "n_usable_in_window": int(win["insitu_usable"].sum()),
                "illum_decision": ill.loc[oid, "decision"], "illum_reason": ill.loc[oid, "reason"],
                "illum_mape_window": ill.loc[oid, "mape_window"], "illum_mape_day": ill.loc[oid, "mape_day"],
@@ -378,7 +386,9 @@ def process_station(sp: Spectra, settings: Settings, overpasses: pd.DataFrame, r
                        pd.DataFrame(rrs, columns=[f"rrs_{w}" for w in MODEL_GRID], index=meas.index)], axis=1)
     pairs, summary = (pd.DataFrame(), pd.DataFrame())
     if overpasses is not None and len(overpasses):
-        pairs, summary = _pairs_and_summary(base, meas, overpasses, model, sp, settings, illum)
+        own = overpasses_for_station(overpasses, sp.attrs["station_info"])
+        if len(own):
+            pairs, summary = _pairs_and_summary(base, meas, own, model, sp, settings, illum)
     return {"measurements": meas, "pairs": pairs, "summary": summary, "hyperspectral": hyper, "daily": daily}
 
 
@@ -413,8 +423,9 @@ def process(l1, out_dir, settings: Settings | None = None, products=None, times=
                               np.where(base["sza"].to_numpy() >= 90, "not fitted: sun below the horizon", ""))
         if s.fit == "window":
             near = np.zeros(len(base), dtype=bool)
-            if len(overpasses):
-                near[pair(base, overpasses, window_min=s.window_min)["measurement_index"].unique()] = True
+            own = overpasses_for_station(overpasses, sp.attrs["station_info"]) if len(overpasses) else overpasses
+            if len(own):
+                near[pair(base, own, window_min=s.window_min)["measurement_index"].unique()] = True
             not_fitted = np.where(fit_mask & ~near, "not fitted: outside the matchup windows", not_fitted)
             fit_mask &= near
         tasks = _tasks(sp, base, fit_mask, s)

@@ -1,6 +1,6 @@
 """Reader for the Datalakes L1 NetCDF files (Greifensee and Lake Geneva).
 
-The values are read as in the production preprocessing: no scaling, Ed from ``downirr``,
+The values are read as in the paper processing: no scaling, Ed from ``downirr``,
 Ls from ``downrad`` and Lu from ``uprad``. Masked values, which do not occur in the archive,
 become NaN. The per-wavelength ``*_qual`` masks (0 = nothing to report) are reduced to one flag
 per measurement: True when the mask is 0 at every wavelength.
@@ -19,7 +19,7 @@ SENSOR = {"ed": "ed", "ls": "ld", "lu": "lu"}
 
 
 def get_sensor_direction(units_attr: str) -> dict:
-    """Map unit attributes to angular directions based on sensor type (as in production)."""
+    """Map unit attributes to angular directions based on sensor type (as in the paper processing)."""
     if 'EdF' in units_attr:  # Ed sensor
         return {0: 315, 1: 45}  # EdF=315, EdA=45
     elif 'LuS' in units_attr:  # Lu sensor
@@ -76,7 +76,7 @@ def read_datalakes_file(path) -> dict:
             else:
                 cols[f"{key}_sensor"] = np.full(n, np.nan)
 
-        # File-level view angle and per-measurement direction as in the production metadata.
+        # File-level view angle and per-measurement direction as in the metadata of the paper processing.
         if "lu" in f.variables:
             lu_var = f.variables["lu"]
             sensor_vals = np.ma.getdata(lu_var[:])

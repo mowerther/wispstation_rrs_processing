@@ -1,4 +1,4 @@
-"""Band resampling against the production MSI convolution of the paper."""
+"""Band resampling against the MSI convolution of the paper processing."""
 import shutil
 from pathlib import Path
 
@@ -18,8 +18,8 @@ PRIMARY = ["B1", "B2", "B3", "B4", "B5", "B6", "B7", "B8A"]
 B8_COVERAGE = {"S2A": 0.99309, "S2B": 0.99486, "S2C": 0.99078}
 
 
-# Production convolution (MSI paper, trapezoid version), copied unchanged apart from layout.
-def load_srf_production(srf_path):
+# Convolution of the paper processing (trapezoid version), copied unchanged apart from layout.
+def load_srf_paper(srf_path):
     with open(srf_path, 'r') as f:
         for i, line in enumerate(f):
             if ('SR_WL' in line or 'Wavelength' in line) and ';' in line:
@@ -75,8 +75,8 @@ def convolve_rrs_reflectance(rrs_df, srf_df):
     return pd.DataFrame(out, index=rrs_df.columns, columns=srf_df.columns)
 
 
-def production(wavelength, spectra, sensor, tmp_path):
-    """Production result for spectra (n, m): Rrs on 350-2500 nm at 1 nm, ESA-format SRF file."""
+def paper_processing(wavelength, spectra, sensor, tmp_path):
+    """Result of the paper processing for spectra (n, m): Rrs on 350-2500 nm at 1 nm, SRF file in the ESA format."""
     table = load_srf(sensor).pivot(index="wavelength_nm", columns="band", values="response")
     table = table[list(dict.fromkeys(load_srf(sensor)["band"]))]
     table.index = table.index.astype(int)
@@ -85,7 +85,7 @@ def production(wavelength, spectra, sensor, tmp_path):
     path = tmp_path / f"spectral_response_{sensor.lower()}.csv"
     if not path.exists():
         table.to_csv(path, sep=";")
-    srf = interpolate_srf(load_srf_production(path), np.arange(350, 2501).astype('int64'))
+    srf = interpolate_srf(load_srf_paper(path), np.arange(350, 2501).astype('int64'))
     data_rrs = pd.DataFrame(np.asarray(spectra, float).T, index=np.asarray(wavelength, float))
     wl_target = np.arange(350, 2501).astype('int64')
     data_rrs_interp = data_rrs.reindex(wl_target).interpolate(method='linear')
@@ -110,34 +110,34 @@ def synthetic(n=25, seed=3):
 
 @pytest.fixture(scope="module")
 def real():
-    """Twelve 3C spectra (Greifensee 2025, Lake Geneva 2022-2025) and the production MSI values."""
+    """Twelve 3C spectra (Greifensee 2025, Lake Geneva 2022-2025) and the MSI values of the paper processing."""
     spectra = pd.read_csv(TEST_DATA / "srf_3c_spectra.csv")
-    reference = pd.read_csv(TEST_DATA / "srf_3c_production_msi.csv")
+    reference = pd.read_csv(TEST_DATA / "srf_3c_paper_msi.csv")
     wl_cols = [c for c in spectra.columns if c.isdigit()]
     return np.array(wl_cols, dtype=float), spectra[wl_cols].to_numpy(float), spectra, reference
 
 
 @pytest.mark.parametrize("sensor", MSI)
-def test_synthetic_matches_production(sensor, tmp_path):
+def test_synthetic_matches_paper(sensor, tmp_path):
     x, spectra = synthetic()
     spectra[3, :12] = np.nan  # leading gap, left as NaN by both
     ours = resample(x, spectra, sensor)
-    ref = production(x, spectra, sensor, tmp_path)
+    ref = paper_processing(x, spectra, sensor, tmp_path)
     for band in PRIMARY:
         np.testing.assert_allclose(ours[f"rrs_{sensor}_{band}"], ref[band], rtol=0, atol=1e-9)
         assert np.allclose(ours[f"coverage_{sensor}_{band}"], 1.0, rtol=0, atol=1e-12)
 
 
 @pytest.mark.parametrize("sensor", MSI)
-def test_real_spectra_match_production(sensor, real, tmp_path):
+def test_real_spectra_match_paper(sensor, real, tmp_path):
     x, spectra, meta, reference = real
     ours = resample(x, spectra, sensor)
-    ref = production(x, spectra, sensor, tmp_path)
+    ref = paper_processing(x, spectra, sensor, tmp_path)
     stored = reference[reference["platform"] == sensor].reset_index(drop=True)
     assert list(stored["measurement"]) == list(meta["measurement"])
     for band in PRIMARY:
         np.testing.assert_allclose(ours[f"rrs_{sensor}_{band}"], ref[band], rtol=0, atol=1e-9)
-        # values written by the production run (S2A B1: the production SRF file had 8 decimals)
+        # values written by the paper processing (S2A B1: its SRF file had 8 decimals)
         np.testing.assert_allclose(ours[f"rrs_{sensor}_{band}"], stored[band], rtol=0, atol=1e-9)
 
 
@@ -145,12 +145,12 @@ def test_real_spectra_match_production(sensor, real, tmp_path):
 def test_b8_at_the_900_nm_end(sensor, real, tmp_path):
     x, spectra, _, _ = real
     ours = resample(x, spectra, sensor)
-    ref = production(x, spectra, sensor, tmp_path)
+    ref = paper_processing(x, spectra, sensor, tmp_path)
     coverage = ours[f"coverage_{sensor}_B8"].to_numpy()
     assert np.allclose(coverage, B8_COVERAGE[sensor], atol=1e-5)
     assert np.isfinite(ours[f"rrs_{sensor}_B8"]).all()  # above the default limit of 0.99
     assert resample(x, spectra, sensor, min_coverage=0.995)[f"rrs_{sensor}_B8"].isna().all()
-    # Production repeated Rrs(900) up to 2500 nm, which mixes Rrs(900) into B8 with a fixed weight f
+    # The reference continues Rrs(900) up to 2500 nm, which mixes Rrs(900) into B8 with a fixed weight f
     srf = load_srf(sensor)
     s = srf[srf["band"] == "B8"].set_index("wavelength_nm")["response"]
     s.index = s.index.astype(float)
@@ -162,19 +162,19 @@ def test_b8_at_the_900_nm_end(sensor, real, tmp_path):
     b8 = ours[f"rrs_{sensor}_B8"].to_numpy()
     np.testing.assert_allclose(ref["B8"].to_numpy() - b8, f * (spectra[:, -1] - b8), rtol=0, atol=1e-12)
     assert 0.005 < f < 0.01
-    # B9, B11, B12 were Rrs(900) in production, here they are NaN without coverage
+    # B9, B11, B12 are Rrs(900) in the reference, here they are NaN without coverage
     for band in ("B9", "B11", "B12"):
         np.testing.assert_allclose(ref[band], spectra[:, -1], rtol=0, atol=1e-12)
         assert ours[f"rrs_{sensor}_{band}"].isna().all()
         assert (ours[f"coverage_{sensor}_{band}"] == 0).all()
 
 
-def test_flat_nir_b8_equals_production(tmp_path):
+def test_flat_nir_b8_equals_paper(tmp_path):
     x, spectra = synthetic(n=4)
     spectra[:, x >= 760] = spectra[:, [410]]  # constant from 760 nm, so extrapolation changes nothing
     for sensor in MSI:
         ours = resample(x, spectra, sensor)
-        ref = production(x, spectra, sensor, tmp_path)
+        ref = paper_processing(x, spectra, sensor, tmp_path)
         np.testing.assert_allclose(ours[f"rrs_{sensor}_B8"], ref["B8"], rtol=0, atol=1e-12)
 
 

@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "wispstation-rrs"
 version = "0.1.0"
-description = "Quality-filtered remote sensing reflectance from WISPstation L1 data with the 3C model"
+description = "Remote sensing reflectance and quality criteria from WISPstation L1 data with the 3C model"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "GPL-3.0-or-later" }

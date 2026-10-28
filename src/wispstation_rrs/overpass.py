@@ -1,9 +1,12 @@
 """Satellite overpasses from product names or time tables, and their pairing with measurements.
 
 Sentinel-2 MSI names (``S2A_MSIL1C_20220618T102559_N0510_R108_T32TMT_...``, also ``MSIL2A``) give
-the sensing start time in UTC. Sentinel-3 OLCI names (``S3A_OL_1_EFR____<start>_<stop>_...``,
+the sensing start time in UTC and the tile. Sentinel-3 OLCI names (``S3A_OL_1_EFR____<start>_<stop>_...``,
 also ``OL_1_ERR`` and ``OL_2_WFR``) give the start and stop of the acquisition: the overpass time
 is their midpoint.
+
+An overpass is paired with a station when it carries no station code or the code of that station,
+and when it has no tile, the station lists no tiles, or one of its tiles covers the station.
 """
 from __future__ import annotations
 
@@ -30,6 +33,7 @@ class Overpass:
     time_utc: pd.Timestamp
     tile: str | None = None
     label: str | None = None
+    station: str | None = None
 
 
 def _strip_extension(name: str) -> str:
@@ -64,33 +68,39 @@ def is_product_name(name: str) -> bool:
     return bool(S2_RE.match(product) or S3_RE.match(product))
 
 
-def _read_name_lines(path: Path) -> list[str]:
+def _read_name_lines(path: Path) -> list[tuple[str, str | None]]:
+    """(name, station code or None) of every line that is not empty or a comment."""
     names = []
     for line in path.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if line and not line.startswith("#"):
-            names.append(line)
+        parts = line.split("#", 1)[0].split()
+        if parts:
+            names.append((parts[0], parts[1].upper() if len(parts) > 1 else None))
     return names
 
 
 def read_products(path_or_list) -> list[Overpass]:
-    """Overpasses from a text file (one name per line, ``#`` starts a comment line), a folder
-    (entries ending in .SAFE, .SEN3, .zip or bare product names) or a list of names.
+    """Overpasses from a text file, a folder (entries ending in .SAFE, .SEN3, .zip or bare product
+    names) or a list of names.
 
-    Names in a text file or a list must all parse. Folder entries that are not product names are
-    ignored. The result is sorted by time.
+    A text file holds one product name per line, optionally followed by the code of the station
+    the product is meant for (``S3A_OL_1_EFR____... GFN``). ``#`` starts a comment. Names in a
+    text file or a list must all parse. Folder entries that are not product names are ignored.
+    The result is sorted by time.
     """
     if isinstance(path_or_list, (list, tuple)):
-        names = [str(n) for n in path_or_list]
+        names = [(str(n), None) for n in path_or_list]
     else:
         path = Path(path_or_list)
         if path.is_dir():
-            names = [p.name for p in sorted(path.iterdir()) if is_product_name(p.name)]
+            names = [(p.name, None) for p in sorted(path.iterdir()) if is_product_name(p.name)]
         elif path.is_file():
             names = _read_name_lines(path)
         else:
             raise FileNotFoundError(f"No such file or folder: {path}")
-    out = [parse_product_name(n) for n in names]
+    out = []
+    for name, station in names:
+        o = parse_product_name(name)
+        out.append(Overpass(**{**asdict(o), "station": station}))
     return sorted(out, key=lambda o: (o.time_utc, o.product))
 
 
@@ -107,7 +117,7 @@ def _platform_info(platform) -> tuple[str, str, str]:
 
 
 def read_times_csv(path) -> list[Overpass]:
-    """Overpasses from a CSV file with ``time_utc`` and the optional columns ``platform`` and ``label``."""
+    """Overpasses from a CSV file with ``time_utc`` and the optional columns ``platform``, ``label`` and ``station``."""
     df = pd.read_csv(path, comment="#")
     if "time_utc" not in df.columns:
         raise ValueError(f"{path}: the column time_utc is required")
@@ -117,7 +127,9 @@ def read_times_csv(path) -> list[Overpass]:
         platform, mission, sensor = _platform_info(df["platform"].iloc[i] if "platform" in df.columns else None)
         label = df["label"].iloc[i] if "label" in df.columns else None
         label = None if label is None or (isinstance(label, float) and np.isnan(label)) else str(label)
-        out.append(Overpass(label or "", mission, platform, sensor, pd.Timestamp(t), label=label))
+        station = df["station"].iloc[i] if "station" in df.columns else None
+        station = None if station is None or pd.isna(station) or not str(station).strip() else str(station).strip().upper()
+        out.append(Overpass(label or "", mission, platform, sensor, pd.Timestamp(t), label=label, station=station))
     return sorted(out, key=lambda o: (o.time_utc, o.product))
 
 
@@ -134,41 +146,85 @@ def overpasses_frame(overpasses) -> pd.DataFrame:
                 rows.append(asdict(o))
             else:
                 rows.append({"product": "", "mission": "", "platform": "", "sensor": "",
-                             "time_utc": pd.Timestamp(o), "tile": None, "label": None})
-        df = pd.DataFrame(rows, columns=["product", "mission", "platform", "sensor", "time_utc", "tile", "label"])
+                             "time_utc": pd.Timestamp(o), "tile": None, "label": None, "station": None})
+        df = pd.DataFrame(rows, columns=["product", "mission", "platform", "sensor", "time_utc", "tile", "label",
+                                         "station"])
     df["time_utc"] = pd.to_datetime(df["time_utc"], utc=True).dt.as_unit("ns")
-    for col in ("product", "platform", "sensor", "mission"):
+    for col in ("product", "platform", "sensor", "mission", "tile", "station"):
         if col not in df.columns:
             df[col] = ""
+        df[col] = df[col].fillna("").astype(str)
     return df.reset_index(drop=True)
 
 
+COLUMNS = ["product", "mission", "platform", "sensor", "time_utc", "tile", "station"]
+
+
 def unique_overpasses(overpasses) -> pd.DataFrame:
-    """One row per platform and time: products of the same acquisition (several tiles) are joined."""
+    """One row per platform, time and station code: products of the same acquisition are joined.
+
+    ``product``, ``tile`` and ``station`` hold the values of the joined products separated by
+    ``;``, in the same order for ``product`` and ``tile``.
+    """
     df = overpasses_frame(overpasses)
     if df.empty:
-        return df
-    df["product"] = df["product"].fillna("").astype(str)
-    agg = (df.groupby(["platform", "time_utc"], sort=False, dropna=False)
-             .agg(product=("product", lambda s: ";".join(dict.fromkeys(x for x in s if x))),
-                  mission=("mission", "first"), sensor=("sensor", "first"))
-             .reset_index())
-    return agg.sort_values("time_utc", kind="stable").reset_index(drop=True)[
-        ["product", "mission", "platform", "sensor", "time_utc"]]
+        return pd.DataFrame(columns=COLUMNS)
+    rows = []
+    for (_, _, station), g in df.groupby(["platform", "time_utc", "station"], sort=False, dropna=False):
+        pairs = list(dict.fromkeys(zip(g["product"], g["tile"])))
+        rows.append({"product": ";".join(p for p, _ in pairs if p), "mission": g["mission"].iloc[0],
+                     "platform": g["platform"].iloc[0], "sensor": g["sensor"].iloc[0],
+                     "time_utc": g["time_utc"].iloc[0], "tile": ";".join(t for p, t in pairs if p),
+                     "station": station})
+    out = pd.DataFrame(rows, columns=COLUMNS)
+    return out.sort_values("time_utc", kind="stable").reset_index(drop=True)
+
+
+def overpasses_for_station(overpasses: pd.DataFrame, station) -> pd.DataFrame:
+    """The overpasses of a table (see :func:`unique_overpasses`) that apply to ``station``.
+
+    A row applies when its station code is empty or that of the station, and when it has no tile,
+    the station lists no tiles or one of its tiles is a tile of the station. ``product`` and
+    ``tile`` keep the products of the tiles of the station.
+    """
+    code = str(station.code).upper()
+    tiles = {str(t).upper() for t in getattr(station, "tiles", ())}
+    keep, products, tile_col = [], [], []
+    for _, o in overpasses.iterrows():
+        if str(o.get("station", "") or "").upper() not in ("", code):
+            keep.append(False), products.append(o["product"]), tile_col.append(o.get("tile", ""))
+            continue
+        prods = [p for p in str(o["product"]).split(";") if p]
+        tls = str(o.get("tile", "") or "").split(";") if prods else []
+        tls = tls + [""] * (len(prods) - len(tls))
+        if tiles and any(tls):
+            sel = [(p, t) for p, t in zip(prods, tls) if not t or t.upper() in tiles]
+        else:
+            sel = list(zip(prods, tls))
+        keep.append(bool(sel) or not prods)
+        products.append(";".join(p for p, _ in sel))
+        tile_col.append(";".join(t for _, t in sel))
+    out = overpasses.copy()
+    out["product"] = products
+    out["tile"] = tile_col
+    return out[np.asarray(keep, dtype=bool)]
 
 
 def pair(spectra_meta, overpasses, window_min: float = 15.0) -> pd.DataFrame:
     """Pair measurements with overpasses.
 
     ``spectra_meta`` is the ``meta`` table of a :class:`~wispstation_rrs.types.Spectra` (or the
-    Spectra itself). Products of the same acquisition are counted as one overpass. Returns one
-    row per overpass and measurement with ``|delta| <= window_min`` minutes: ``overpass_id``,
+    Spectra itself). ``overpasses`` is an overpass table of :func:`unique_overpasses` (its index
+    gives ``overpass_id``) or a list, whose products of the same acquisition are then counted as
+    one overpass. Returns one row per overpass and measurement within ``window_min`` minutes:
+    ``overpass_id``,
     ``product``, ``platform``, ``sensor``, ``overpass_time_utc``, ``station``,
     ``measurement_index`` (row of ``meta``), ``time_utc``, ``delta_min`` (measurement minus
     overpass), ``abs_delta_min`` and ``is_closest`` (the measurement nearest to the overpass).
     """
     meta = spectra_meta.meta if hasattr(spectra_meta, "meta") else spectra_meta
-    ov = unique_overpasses(overpasses)
+    ov = overpasses if isinstance(overpasses, pd.DataFrame) and "tile" in overpasses.columns \
+        else unique_overpasses(overpasses)
     t_meas = pd.DatetimeIndex(pd.to_datetime(meta["time_utc"], utc=True)).as_unit("ns")
     t_ns = t_meas.asi8
     station = meta["station"].to_numpy() if "station" in meta.columns else np.full(len(meta), "")

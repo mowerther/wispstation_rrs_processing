@@ -1,33 +1,32 @@
-"""Interface of the JAX 3C implementation (production configuration)."""
+"""Interface of the JAX 3C implementation (configuration of the paper processing)."""
 from __future__ import annotations
 
 import numpy as np
 
 from ...types import ThreeCResult
 from ..base import finite_or_none, to_model_grid
-from .model import SPECTRA_DIR, WL, production_params, production_weights, rrs_model_3C
+from .model import SPECTRA_DIR, WL, paper_params, paper_weights, rrs_model_3C
 
 
 class JaxWertherModel:
-    """3C with the production parameters, weights and optimiser settings.
+    """3C with the parameters, weights and optimiser settings of the paper processing.
 
-    Per measurement, as in the production ``process_measurement``: Ed, Ls and Lu are
-    interpolated to 350-900 nm (1 nm), ``sza`` sets theta_sun, ``vza`` theta_view, ``rh``
-    and ``pressure`` the atmosphere and ``water_temp`` T_w. A missing or non-finite input
-    keeps the initial value (theta_sun 40, theta_view 40, rh 60, pressure 1013.25, T_w 20),
-    as the Trasimeno script does. lmfit clips values to the parameter bounds (theta_view
-    0-180, T_w 0-35). The production Greifensee and Lake Geneva runs passed no water
-    temperature (T_w 20), the Trasimeno runs passed the 2 m air temperature. ``raa`` is
-    not used.
+    Per measurement, Ed, Ls and Lu are interpolated to 350-900 nm (1 nm), ``sza`` sets
+    theta_sun, ``vza`` theta_view, ``rh`` and ``pressure`` the atmosphere and ``water_temp``
+    T_w. A missing input, or one that is not finite, keeps the initial value (theta_sun 40,
+    theta_view 40, rh 60, pressure 1013.25, T_w 20). lmfit clips values to the parameter bounds
+    (theta_view 0-180, pressure 950-1050 hPa, T_w 0-35 degC), and ``params`` of the result holds
+    the values used. ``raa`` is not used.
 
     Options
-        screen_nonfinite  True (default): non-finite screening of the Trasimeno script.
-                          False: plain ratios of the Greifensee and Lake Geneva script.
-                          Identical results for finite inputs with Ed > 0.
+        screen_nonfinite  True (default): the ratios are 0 where Ed is not finite or zero, and
+                          wavelengths with values that are not finite get weight 0.
+                          False: plain ratios. Both give the same results for finite inputs
+                          with Ed above 0.
         spectra_path      folder with phyto.A, water.A, Y.A and daWdT.txt (default: bundled).
         compile_once      True (default): cost and gradient are compiled once per model.
                           False: compiled for every fit, as in the paper processing.
-                          Both give bitwise the same results, the first about eight times faster.
+                          Both give bitwise the same results, the first five to ten times faster.
     """
 
     name = "jax"
@@ -40,8 +39,8 @@ class JaxWertherModel:
                                  spectra_path=SPECTRA_DIR if spectra_path is None else spectra_path)
         if not np.array_equal(self.core.wl, WL):
             raise ValueError("the 3C spectra do not cover 350-900 nm at 1 nm")
-        self.weights = production_weights(WL)
-        self.init_params = production_params()
+        self.weights = paper_weights(WL)
+        self.init_params = paper_params()
 
     def fit(self, wavelength, ed, ls, lu, sza, vza=None, raa=None, rh=None, pressure=None,
             water_temp=None) -> ThreeCResult:

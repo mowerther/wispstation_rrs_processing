@@ -7,8 +7,9 @@ trapezoid weights. The band value of one spectrum is
     sum(w * SRF * Rrs) / sum(w * SRF)
 
 over the finite Rrs samples. For an SRF on the measured grid (MSI at 1 nm), the union grid is the
-measured grid and the result equals the convolution of the paper processing. For narrow bands on
-finer grids (OLCI), the union grid keeps the shape of the SRF. The coverage of a band is the SRF area over the measured range of the
+measured grid, and B1-B7 and B8A equal the convolution of the paper processing. B8 extends beyond
+900 nm and is normalised over its part within the spectrum. For narrow bands on finer grids
+(OLCI), the union grid keeps the form of the SRF. The coverage of a band is the SRF area over the measured range of the
 spectrum (intervals between neighbouring finite samples) divided by the SRF area over its full
 support. Bands with a coverage below ``min_coverage`` are NaN.
 

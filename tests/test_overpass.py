@@ -71,3 +71,32 @@ def test_pair_window():
     assert pair(meta, [t0], window_min=2).empty
     p = pair(meta, [t0], window_min=30)
     assert len(p) == 6
+
+
+def test_station_of_products_and_times(tmp_path):
+    from wispstation_rrs.overpass import overpasses_for_station
+    from wispstation_rrs.stations import STATIONS, custom_station
+
+    names = tmp_path / "products.txt"
+    names.write_text(
+        "S2B_MSIL1C_20220618T102559_N0510_R108_T32TMT_20240628T075737.SAFE\n"
+        "S2B_MSIL1C_20220618T102559_N0510_R108_T31TGM_20240628T075737.SAFE\n"
+        "S2A_MSIL1C_20220618T100051_N0511_R122_T32TQN_20220618T104327\n"
+        "S3A_OL_1_EFR____20220618T095512_20220618T095812_20220619T143005_0179_067_250_2160_PS2_O_NT_002 GFN  # one station\n")
+    ov = unique_overpasses(read_products(names))
+    assert list(ov["tile"]) == ["", "T32TQN", "T31TGM;T32TMT"]
+    assert list(ov["station"]) == ["GFN", "", ""]
+    gfn = overpasses_for_station(ov, STATIONS["GFN"])
+    assert list(gfn["platform"]) == ["S3A", "S2B"] and gfn["product"].iloc[1].endswith("T32TMT_20240628T075737")
+    lxp = overpasses_for_station(ov, STATIONS["LXP"])
+    assert list(lxp["platform"]) == ["S2B"] and "T31TGM" in lxp["product"].iloc[0]
+    trs = overpasses_for_station(ov, STATIONS["TRS012"])
+    assert list(trs["platform"]) == ["S2A"]
+    # a station without tiles takes every Sentinel-2 product, the index is kept as overpass_id
+    other = overpasses_for_station(ov, custom_station("ABC", 47.0, 8.0, 400.0))
+    assert list(other.index) == [1, 2]
+    times = tmp_path / "times.csv"
+    times.write_text("time_utc,platform,station\n2025-07-10T09:31:31Z,S3B,trs012\n2025-07-10T10:00:51Z,S2A,\n")
+    ov = unique_overpasses(read_times_csv(times))
+    assert list(overpasses_for_station(ov, STATIONS["GFN"])["platform"]) == ["S2A"]
+    assert list(overpasses_for_station(ov, STATIONS["TRS012"])["platform"]) == ["S3B", "S2A"]

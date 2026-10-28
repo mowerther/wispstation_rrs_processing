@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-
 # 3C model of Groetsch et al. (2017), JAX implementation by Mortimer Werther (Eawag, 2025).
 # The original Python implementation of the 3C model is distributed under LGPL-3.0-or-later.
-# This copy is the 3C fit of the paper processing (Greifensee and Lake Geneva, and Lake
-# Trasimeno with the non-finite screening). The model, the weights, the parameter table, the
-# lmfit L-BFGS-B options and the jax.grad Jacobian are unchanged. Plotting and the timing
-# printout are removed.
+# This copy is the 3C fit of the paper processing. The model, the weights, the parameter
+# table, the lmfit L-BFGS-B options and the jax.grad Jacobian are unchanged. Plotting and the
+# timing printout are removed.
 """
 Python implementation of an analytic remote sensing reflectance model as described in:
 
@@ -17,9 +16,10 @@ This code was originally implemented in Theano; here we use JAX with JIT-compila
 to speed up the evaluations.
 
 Two fit paths give bitwise the same results:
-    fit_LuEd           production code: cost and gradient are traced and compiled for every fit.
+    fit_LuEd           code path of the paper processing: cost and gradient are traced and
+                       compiled for every fit.
     fit_LuEd_compiled  cost and gradient are compiled once per model, the measured ratios and the
-                       weights are passed as arguments (about ten times faster).
+                       weights are passed as arguments (five to ten times faster).
 """
 
 import os
@@ -41,7 +41,7 @@ from lmfit import Parameters  # noqa: E402
 
 SPECTRA_DIR = Path(__file__).resolve().parent / "spectra"
 
-# model grid of the production runs (350-900 nm, 1 nm, int64 as in production)
+# model grid of the paper processing (350-900 nm, 1 nm, int64)
 WL = np.arange(350, 901, dtype=np.int64)
 
 # parameter order used by the model and by the Jacobian
@@ -51,12 +51,12 @@ PARAM_ORDER = ['beta', 'alpha', 'am', 'rh', 'pressure',
                'theta_sun', 'theta_view',
                'n_w', 'rho_s', 'rho_dd', 'rho_ds', 'delta']
 
-# lmfit L-BFGS-B options of production (the 'disp' print flag is left out)
+# lmfit L-BFGS-B options of the paper processing (the 'disp' print flag is left out)
 LBFGSB_OPTIONS = {'gtol': 1e-16, 'eps': 1e-07, 'maxiter': 15000, 'ftol': 1e-16, 'maxls': 20, 'maxcor': 20}
 
 
-def production_params():
-    """Base parameter set of production (theta_sun, theta_view, rh, pressure and T_w are set per measurement)."""
+def paper_params():
+    """Base parameter set of the paper processing (theta_sun, theta_view, rh, pressure and T_w are set per measurement)."""
     init_params = Parameters()
     init_params.add('beta',      value=0.5,    vary=True,  min=0.05, max=7)
     init_params.add('alpha',     value=1.2,    vary=True,  min=0.1,  max=2.5)
@@ -83,8 +83,8 @@ def production_params():
     return init_params
 
 
-def production_weights(wl):
-    """Spectral weights of production: 5 up to 500 nm, 0.1 at 675-750 and 760-770 nm, 1 elsewhere."""
+def paper_weights(wl):
+    """Spectral weights of the paper processing: 5 up to 500 nm, 0.1 at 675-750 and 760-770 nm, 1 elsewhere."""
     weights = pd.Series(1.0, index=wl)
     weights.loc[:500] = 5
     weights.loc[675:750] = 0.1
@@ -95,9 +95,9 @@ def production_weights(wl):
 def measured_ratios(Ls, Lu, Ed, weights, screen_nonfinite=True):
     """Ls/Ed, Lu/Ed and weights entering the cost.
 
-    screen_nonfinite True: Trasimeno script, the ratios are 0 where Ed is not finite or zero and
-    wavelengths with non-finite values get weight 0. False: Greifensee and Lake Geneva script,
-    plain ratios. Both give the same arrays for finite inputs with Ed > 0.
+    screen_nonfinite True: the ratios are 0 where Ed is not finite or zero, and wavelengths with
+    values that are not finite get weight 0. False: plain ratios. Both give the same arrays for
+    finite inputs with Ed above 0.
     """
     if screen_nonfinite:
         with np.errstate(divide='ignore', invalid='ignore'):
@@ -120,7 +120,7 @@ def measured_ratios(Ls, Lu, Ed, weights, screen_nonfinite=True):
         )
         weights_np[invalid_mask] = 0.0
         if not np.any(weights_np > 0):
-            raise ValueError("No valid wavelengths after screening non-finite values.")
+            raise ValueError("No wavelength with finite values left.")
         return safe_Ls_Ed, safe_Lu_over_Ed, weights_np
     return Ls / Ed, Lu / Ed, weights
 
@@ -280,7 +280,7 @@ class rrs_model_3C(object):
                     astar_ph=jnp.array(self.astar_ph), astar_y=jnp.array(self.astar_y))
 
     def _minimize(self, cost, grad, params, verbose):
-        """lmfit L-BFGS-B with the production options and the jax.grad Jacobian as Dfun."""
+        """lmfit L-BFGS-B with the options of the paper processing and the jax.grad Jacobian as Dfun."""
         param_order = self.param_order
 
         def objective_from_params(lmfit_params):
@@ -340,7 +340,7 @@ class rrs_model_3C(object):
 
     def fit_LuEd(self, wl, Ls, Lu, Ed, params, weights, verbose=True, screen_nonfinite=True):
         """
-        Fit the 3C model to a set of radiometric measurements (production code path).
+        Fit the 3C model to a set of radiometric measurements (code path of the paper processing).
 
         Inputs:
             wl     -- wavelength array (numpy array)
@@ -430,7 +430,7 @@ class rrs_model_3C(object):
                 resid = jnp.sum(((Lu_Ed_modelled - Lu_over_Ed) ** 2) * weights)
                 return resid
 
-            # gradient with respect to the parameter vector only, as jax.grad in production
+            # gradient with respect to the parameter vector only, as jax.grad in the paper processing
             self._compiled = (key, consts, jax.jit(objective_func_vec), jax.jit(jax.grad(objective_func_vec)))
         return self._compiled[1:]
 

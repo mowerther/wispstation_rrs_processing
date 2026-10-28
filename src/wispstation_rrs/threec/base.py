@@ -7,7 +7,7 @@ measurement and returns a :class:`~wispstation_rrs.types.ThreeCResult` on the 35
 Inputs that an implementation does not use are accepted and ignored.
 
 Names
-    ``jax``  3C of Groetsch et al. (2017), JAX implementation of production (Werther).
+    ``jax``  3C of Groetsch et al. (2017), JAX implementation of the paper processing (Werther).
     ``o25``  3C-O25 of Pitarch (2026), vendored upstream version 1.0.4.
 
 For a process pool, pass ``init_worker`` with ``(name, options)`` as initialiser and map
@@ -22,7 +22,7 @@ import numpy as np
 
 from ..types import ThreeCResult
 
-# model grid shared by both implementations (production grid of the JAX runs)
+# model grid shared by both implementations (grid of the paper processing)
 MODEL_GRID = np.arange(350, 901, dtype=np.int64)
 
 _MODELS = {
@@ -57,7 +57,7 @@ def finite_or_none(value):
 
 
 def to_model_grid(wavelength, grid, *spectra):
-    """Interpolate spectra linearly (np.interp, as production) from ``wavelength`` to ``grid``.
+    """Interpolate spectra linearly (np.interp, as the paper processing) from ``wavelength`` to ``grid``.
 
     The input grid must cover the model grid. A decreasing input grid is sorted first.
     """
@@ -102,7 +102,7 @@ def fit_one(args) -> ThreeCResult:
 
     ``args`` is a tuple in the order of ``fit`` or a dictionary of its keyword arguments.
     A fit that raises gives a result with NaN spectra, ``success`` False and the error in
-    ``message``, as the production scripts recorded failed measurements.
+    ``message``, and the run continues.
     """
     if _worker_model is None:
         raise RuntimeError("init_worker was not called in this process")

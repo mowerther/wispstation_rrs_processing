@@ -1,6 +1,6 @@
 """Reader for the WISPcloud L1 spectral NetCDF files (``WISPstationNNN_YYYYMMDD_L1_SPEC.nc``).
 
-The values are read as in the production preprocessing of the Lake Trasimeno stations: no
+The values are read as in the paper processing: no
 scaling, Ed from ``downirr``, Ls from ``downrad`` and Lu from ``uprad``, NaN where the file has
 no value. The per-measurement ``*_qc`` flags (bit flags, 0 = no problem) give the quality columns.
 """
@@ -20,7 +20,7 @@ SENSOR = {"ed": "ed", "ls": "ld", "lu": "lu"}
 
 
 class SkipFile(ValueError):
-    """Raised for a file that the production preprocessing skipped."""
+    """Raised for a file without the required variables or without measurements."""
 
 
 def read_wispcloud_file(path) -> dict:
@@ -62,7 +62,7 @@ def read_wispcloud_file(path) -> dict:
             else:
                 cols[f"{key}_sensor"] = np.full(n, np.nan)
 
-        # File-level view angle and per-measurement direction as in the production metadata.
+        # File-level view angle and per-measurement direction as in the metadata of the paper processing.
         if "lu" in f.variables:
             lu_var = f.variables["lu"]
             sensor_vals = np.asarray(lu_var[:], dtype=float).ravel()

@@ -1,8 +1,8 @@
-"""Regression tests of the JAX 3C implementation against archived production Rrs.
+"""Regression of the JAX 3C implementation against the archived Rrs of the paper processing.
 
 The references in tests/data/threec_reference_*.csv hold, for four L1 times of each example
-day, the production inputs (sza, theta_view, rh, pressure, water temperature) and the
-archived production Rrs. Ed, Ls and Lu are read from the example L1 files.
+day, the inputs of the paper processing (sza, theta_view, rh, pressure, water temperature) and
+the archived Rrs. Ed, Ls and Lu are read from the example L1 files.
 
 Tolerance (maximum absolute Rrs difference, sr-1)
     Greifensee 1e-6: the archive stores small values with three significant digits
@@ -20,7 +20,7 @@ import pandas as pd
 import pytest
 
 from wispstation_rrs.threec import get_model
-from wispstation_rrs.threec.jax_werther.model import PARAM_ORDER, WL, production_params, production_weights
+from wispstation_rrs.threec.jax_werther.model import PARAM_ORDER, WL, paper_params, paper_weights
 
 HERE = Path(__file__).resolve().parent
 DATA = HERE / "data"
@@ -32,16 +32,16 @@ CASES = [
     ("trasimeno012", "20250710", "WISPstation012_20250710_L1_SPEC.nc", 1e-9),
 ]
 
-# content digests of the spectra as loaded by the production code (a_w, daw_dT, astar_ph, astar_y)
-PRODUCTION_SPECTRA_DIGESTS = {
+# content digests of the spectra as loaded by the paper processing (a_w, daw_dT, astar_ph, astar_y)
+PAPER_SPECTRA_DIGESTS = {
     "a_w": "fd5d1b08c9f72cc032887a26ec89ce1d537f0c85027d0af7ba44f4c5d5a8eeef",
     "daw_dT": "ad6dc11c1c234c4418ced2a62db608f48281a776ef5cac5e6b33b244fa9c6e59",
     "astar_ph": "e45e2e58613f7609e58c994b71fceb12cc792754418ec592de136a3a78ef8ef8",
     "astar_y": "8673adf9a08816ff2825697044b7f273805dcf9a9afb7a3b2b04224af6e97dca",
 }
 
-# production parameter table: name, value, vary, min, max
-PRODUCTION_TABLE = [
+# parameter table of the paper processing: name, value, vary, min, max
+PAPER_TABLE = [
     ("beta", 0.5, True, 0.05, 7.0), ("alpha", 1.2, True, 0.1, 2.5), ("am", 1.0, False, 1.0, 10.0),
     ("rh", 60.0, False, 0.0, 100.0), ("pressure", 1013.25, False, 950.0, 1050.0),
     ("C_chl", 5.0, True, 0.01, 100.0), ("C_sm", 1.0, True, 0.01, 100.0), ("C_mie", 0.0, False, 0.0, 100.0),
@@ -83,19 +83,19 @@ def model():
     return get_model("jax")
 
 
-def test_spectra_equal_production(model):
-    for name, digest in PRODUCTION_SPECTRA_DIGESTS.items():
+def test_spectra_equal_paper(model):
+    for name, digest in PAPER_SPECTRA_DIGESTS.items():
         assert array_digest(getattr(model.core, name)) == digest, name
     assert np.array_equal(model.core.wl, WL)
     assert np.count_nonzero(model.core.daw_dT) > 500
 
 
 def test_parameter_table_and_weights():
-    p = production_params()
+    p = paper_params()
     assert list(p.keys()) == PARAM_ORDER
     table = [(n, float(p[n].value), bool(p[n].vary), float(p[n].min), float(p[n].max)) for n in p]
-    assert table == PRODUCTION_TABLE
-    w = pd.Series(production_weights(WL), index=WL)
+    assert table == PAPER_TABLE
+    w = pd.Series(paper_weights(WL), index=WL)
     assert (w.loc[350:500] == 5).all() and w.loc[501] == 1
     assert (w.loc[675:750] == 0.1).all() and w.loc[674] == 1 and w.loc[751] == 1
     assert (w.loc[760:770] == 0.1).all() and w.loc[759] == 1 and w.loc[771] == 1
@@ -103,7 +103,7 @@ def test_parameter_table_and_weights():
 
 
 @pytest.mark.parametrize("station,date,l1,tol", CASES)
-def test_rrs_matches_production(model, station, date, l1, tol):
+def test_rrs_matches_paper(model, station, date, l1, tol):
     ref = read_reference(station, date)
     rrs_cols = [f"Rrs_{w}" for w in WL]
     for _, r in ref.iterrows():

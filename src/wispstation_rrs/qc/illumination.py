@@ -1,6 +1,6 @@
-"""Illumination check: measured Ed(560) against a clear-sky sine model of the day.
+"""Illumination criterion: measured Ed(560) against a clear sky sine model of the day.
 
-The check follows the production percentile and MAPE filter:
+The criterion follows the percentile and MAPE filter of the paper processing:
 
 * Ed is taken at the band nearest 560 nm (within 5 nm).
 * EdMax of a date is the 90th percentile of the Ed values measured within 15 min of solar noon
@@ -13,7 +13,7 @@ The check follows the production percentile and MAPE filter:
 * The MAPE over the measurements within 15 min of an overpass decides: the overpass is retained
   when the MAPE is at most 20 % and at least one measurement lies in the window.
 
-Times are handled as in production: local clock times of the station time zone, the solar
+Times are handled as in the paper processing: local clock times of the station time zone, the solar
 schedule of :func:`wispstation_rrs.geometry.solar_schedule` and whole seconds after midnight for
 the model. All parameters are in :class:`IlluminationSettings`.
 """
@@ -97,7 +97,7 @@ def ed_series(spectra, settings: IlluminationSettings | None = None, station=Non
 
     Returns (table, actual wavelength). The table has ``time_utc``, ``time_local`` (naive local
     clock time), ``date_local`` and ``ed``, sorted by time, without NaN values and without
-    duplicate times. Times are truncated to microseconds as in production.
+    duplicate times. Times are truncated to microseconds as in the paper processing.
     """
     s = settings or IlluminationSettings()
     st = _station(spectra, station)
@@ -147,18 +147,31 @@ def read_edmax_csv(path) -> pd.DataFrame:
     missing = {"date_local", "ed_max"} - set(df.columns)
     if missing:
         raise ValueError(f"{path}: the columns {', '.join(sorted(missing))} are required")
-    return _edmax_table(df)
+    df["date_local"] = pd.to_datetime(df["date_local"]).dt.date
+    df["ed_max"] = pd.to_numeric(df["ed_max"], errors="coerce")
+    return df
 
 
 def _edmax_table(table, station_code=None) -> pd.DataFrame:
+    """EdMax rows of one station (rows without a station apply to every station), one per date.
+
+    A row of the station replaces a row without a station for the same date.
+    """
     df = pd.DataFrame(table).copy()
     df["date_local"] = pd.to_datetime(df["date_local"]).dt.date
     df["ed_max"] = pd.to_numeric(df["ed_max"], errors="coerce")
-    if station_code is not None and "station" in df.columns:
-        st = df["station"].astype("string").str.strip().fillna("").str.upper()
-        df = df[((st == "") | (st == str(station_code).upper())).to_numpy(dtype=bool)]
-    df = df[np.isfinite(df["ed_max"].to_numpy(dtype=float))]
-    return df.drop_duplicates("date_local", keep="last").reset_index(drop=True)
+    if "station" in df.columns:
+        code = df["station"].astype("string").str.strip().fillna("").str.upper().to_numpy(dtype=object)
+    else:
+        code = np.full(len(df), "", dtype=object)
+    own = code == str(station_code).upper() if station_code is not None else np.zeros(len(df), dtype=bool)
+    keep = np.isfinite(df["ed_max"].to_numpy(dtype=float))
+    if station_code is not None:
+        keep &= own | (code == "")
+    df = df.assign(_own=own)[keep]
+    # rows of the station come last, so they win over rows without a station
+    df = df.sort_values("_own", kind="stable").drop_duplicates("date_local", keep="last")
+    return df.drop(columns="_own").sort_values("date_local").reset_index(drop=True)
 
 
 def edmax_by_date(ed_df: pd.DataFrame, station, dates=None, settings: IlluminationSettings | None = None,

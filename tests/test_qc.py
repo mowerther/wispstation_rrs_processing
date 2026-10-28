@@ -18,7 +18,7 @@ EXAMPLES = HERE.parent / "examples"
 DATA = HERE / "data"
 
 # window MAPE and day MAPE (%) with EdMax pooled over plus or minus 15 days of the full archives:
-# paper tables for GFN and TRS012, the same computation for LXP 2025-05-28 (not in the paper tables)
+# paper tables for GFN and TRS012, the same computation for LXP 2025-05-28
 PAPER = {"GFN": (2.311069330930203, 6.467613114640451), "LXP": (80.80407108907062, 70.57195141255733),
          "TRS012": (0.49907432396665025, 21.456526014926457)}
 DECISION = {"GFN": "retain", "LXP": "reject", "TRS012": "retain"}
@@ -149,3 +149,22 @@ def test_sine_model_and_centred_window():
     # the noon value equals EdMax, the model at noon is close to EdMax
     noon = out.iloc[out["ed"].to_numpy().argmax()]
     assert noon["n_points_window"] == 1 and noon["mape_window"] < 1.0 and noon["decision"] == "retain"
+
+
+def test_edmax_table_of_several_stations(spectra, overpasses, tmp_path):
+    """Rows of other stations on the same date leave the EdMax of a station unchanged."""
+    path = tmp_path / "edmax.csv"
+    path.write_text("station,date_local,ed_max\nGFN,2022-06-18,2.164430192\nLXP,2022-06-18,1.5\n"
+                    ",2022-06-18,9.9\n")
+    table = read_edmax_csv(path)
+    assert len(table) == 3
+    res, daily = check_overpasses(spectra["GFN"], overpasses, edmax_table=table)
+    assert daily["ed_max"].iloc[0] == 2.164430192 and daily["ed_max_source"].iloc[0] == "table"
+    row = res[res["platform"] == "S2B"].iloc[0]
+    assert row["mape_window"] == pytest.approx(PAPER["GFN"][0], rel=1e-9)
+    # a row without a station applies to every station without a row of its own
+    st = STATIONS["LXP"]
+    from wispstation_rrs.qc.illumination import _edmax_table
+    assert _edmax_table(table, "LXP")["ed_max"].tolist() == [1.5]
+    assert _edmax_table(table, "TRS012")["ed_max"].tolist() == [9.9]
+    assert st.code == "LXP"

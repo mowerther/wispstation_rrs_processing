@@ -52,7 +52,7 @@ def test_outputs_written(run):
 def test_summary_and_pairs(run):
     out, tables = run
     s = read_table(out / "overpass_summary.csv")
-    assert len(s) == 1
+    assert len(s) == 1 and s["tile"].item() == "T32TQN"
     o = s.iloc[0]
     assert o["platform"] == "S2A" and o["illum_decision"] == "retain"
     assert o["illum_mape_window"] == pytest.approx(0.49907432396665025, rel=1e-9)
@@ -151,3 +151,40 @@ def test_load_overpasses_names_and_times(tmp_path):
     path.write_text("time_utc,platform\n2025-07-10T09:31:31Z,S3A\n")
     ov = load_overpasses(["S2A_MSIL1C_20250710T100051_N0511_R122_T32TQN_20250710T104327"], path)
     assert list(ov["platform"]) == ["S3A", "S2A"]
+
+
+def test_cache_keeps_earlier_fits(tmp_path, monkeypatch):
+    calls = []
+    monkeypatch.setattr(batch, "fit_one", lambda args: calls.append(args["sza"]) or failed_result("x"))
+    s = Settings(workers=1, progress=False)
+    def tasks(keys):
+        return [{"key": k, "day": "GFN_20220618", "args": {"sza": k}} for k in keys]
+    batch.run_fits(tasks(["a", "b", "c"]), s, cache_dir=tmp_path)
+    batch.run_fits(tasks(["a", "d"]), s, cache_dir=tmp_path)
+    batch.run_fits(tasks(["a", "b", "c", "d"]), s, cache_dir=tmp_path)
+    assert calls == ["a", "b", "c", "d"]
+
+
+def test_illumination_window_apart_from_matchup_window(l1, tmp_path):
+    common = dict(products=EXAMPLES / "overpasses.txt", meteo=EXAMPLES / "meteo.csv", edmax=EXAMPLES / "edmax.csv")
+    wide = process(l1, tmp_path / "a", Settings(fit="window", window_min=30, workers=1, progress=False, plots=False),
+                   **common)
+    o = wide["summary"].iloc[0]
+    assert o["n_in_window"] == 4
+    assert o["illum_n_points_window"] == 2
+    assert o["illum_mape_window"] == pytest.approx(0.49907432396665025, rel=1e-9)
+
+
+def test_cli_new_station(l1, tmp_path):
+    folder = tmp_path / "l1"
+    folder.mkdir()
+    shutil.copy(l1 / TRS, folder / "WISPstation077_20250710_L1_SPEC.nc")
+    rc = main(["process", str(folder), "-o", str(tmp_path / "out"), "--station", "TRS077", "--lat", "43.123064",
+               "--lon", "12.129649", "--altitude", "258", "--timezone", "Europe/Rome", "--tiles", "T32TQN",
+               "--products", str(EXAMPLES / "overpasses.txt"), "--fit", "window", "--workers", "1", "--no-plots",
+               "--quiet"])
+    assert rc == 0
+    s = pd.read_csv(tmp_path / "out" / "overpass_summary.csv")
+    assert list(s["station"]) == ["TRS077"] and s["matchup_usable"].item()
+    with pytest.raises(SystemExit):
+        main(["process", str(folder), "--lat", "43.1", "--lon", "12.1"])

@@ -3,13 +3,12 @@
 Sun position: :func:`solar_angles` uses ``pvlib.solarposition.get_solarposition`` (NREL SPA,
 ``method="nrel_numpy"``). The solar zenith angle ``sza`` is pvlib's ``apparent_zenith``, the
 zenith corrected for atmospheric refraction, computed with sea-level pressure (101325 Pa) and
-15 degC. This matches the production values (pysolar ``90 - get_altitude``, which also applies
-refraction with these defaults) more closely than the true zenith. ``sza_true`` is pvlib's
+15 degC. It agrees with the solar zenith angles of the paper processing within 0.006 degrees,
+closer than the true zenith. ``sza_true`` is pvlib's
 ``zenith`` and ``saa`` is pvlib's ``azimuth`` (degrees clockwise from north).
 
 Solar schedule: :func:`solar_schedule` reproduces the sunrise, solar noon and sunset times that
-the production illumination check took from ``solartime.SolarTime().sun_utc``: the NOAA
-equations (as in astral 1.x), sunrise and sunset for a solar zenith of 90.833 degrees, times in
+the illumination criterion of the paper processing used: the NOAA equations (as in astral 1.x), sunrise and sunset for a solar zenith of 90.833 degrees, times in
 UTC truncated to whole seconds.
 """
 from __future__ import annotations
@@ -61,7 +60,7 @@ def solar_angles_for_station(station, times) -> pd.DataFrame:
     return solar_angles(times, st.lat, st.lon, altitude_m=0.0)
 
 
-# NOAA solar equations as used by the production solar schedule.
+# NOAA solar equations of the solar schedule of the paper processing.
 
 def _julianday(day: _dt.date) -> float:
     year, month = day.year, day.month
@@ -192,7 +191,7 @@ def _calc_time(day: _dt.date, latitude: float, longitude: float, zenith: float,
     t = _jday_to_jcentury(_julianday(day))
     eqtime = _eq_of_time(t)
     solar_dec = _sun_declination(t)
-    # The first estimate uses the setting hour angle for both events, as the production
+    # The first estimate uses the setting hour angle for both events, as the paper processing
     # schedule did: this reproduces its sunrise times to the second.
     hourangle = -_hour_angle(latitude, solar_dec, zenith)
     delta = -longitude - degrees(hourangle)
@@ -238,7 +237,7 @@ def _seconds_of_day(ts) -> int:
 
 
 def solar_schedule_table(dates, lat: float, lon: float, timezone: str) -> pd.DataFrame:
-    """Daily solar schedule as the production illumination check used it.
+    """Daily solar schedule of the illumination criterion.
 
     ``dates`` are local calendar dates. Returns one row per date with ``date_local``,
     ``sunrise_utc``, ``noon_utc``, ``sunset_utc`` (timezone-aware UTC), ``sunrise_local``,

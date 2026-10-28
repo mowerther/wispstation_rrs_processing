@@ -14,8 +14,10 @@ class Station:
     """One WISPstation site.
 
     ``timezone`` is the local time zone used for calendar days and solar noon in the
-    illumination check. ``view_zenith_deg`` and ``relative_azimuth_deg`` describe the sensor
+    illumination criterion. ``view_zenith_deg`` and ``relative_azimuth_deg`` describe the sensor
     geometry. ``file_format`` is ``"datalakes"`` or ``"wispcloud"`` (None when unknown).
+    ``tiles`` are the Sentinel-2 tiles that cover the station: a Sentinel-2 product of another
+    tile is not paired with the station. An empty tuple pairs every product.
     """
 
     code: str
@@ -27,6 +29,7 @@ class Station:
     view_zenith_deg: float = 45.0
     relative_azimuth_deg: float = 135.0
     file_format: str | None = None
+    tiles: tuple = ()
 
     @property
     def surface_pressure_hpa(self) -> float:
@@ -41,13 +44,13 @@ def barometric_pressure_hpa(altitude_m: float) -> float:
 
 STATIONS: dict[str, Station] = {
     "GFN": Station("GFN", "Greifensee", 47.3665, 8.6648333, 435.0, "Europe/Zurich",
-                   file_format=DATALAKES),
+                   file_format=DATALAKES, tiles=("T32TMT",)),
     "LXP": Station("LXP", "Lake Geneva (LéXPLORE)", 46.5002275, 6.6608353, 372.0, "Europe/Zurich",
-                   file_format=DATALAKES),
+                   file_format=DATALAKES, tiles=("T31TGM", "T32TLS")),
     "TRS012": Station("TRS012", "Lake Trasimeno WISPstation012", 43.123064, 12.129649, 258.0,
-                      "Europe/Rome", file_format=WISPCLOUD),
+                      "Europe/Rome", file_format=WISPCLOUD, tiles=("T32TQN", "T33TTH")),
     "TRS001": Station("TRS001", "Lake Trasimeno WISPstation001", 43.123064, 12.129649, 258.0,
-                      "Europe/Rome", file_format=WISPCLOUD),
+                      "Europe/Rome", file_format=WISPCLOUD, tiles=("T32TQN", "T33TTH")),
 }
 
 _ALIASES = {
@@ -78,15 +81,18 @@ def get_station(station) -> Station:
 
 def custom_station(code: str, lat: float, lon: float, altitude_m: float, name: str | None = None,
                    timezone: str = "UTC", file_format: str | None = None,
-                   view_zenith_deg: float = 45.0, relative_azimuth_deg: float = 135.0) -> Station:
-    """A user-defined station.
+                   view_zenith_deg: float = 45.0, relative_azimuth_deg: float = 135.0,
+                   tiles=()) -> Station:
+    """A station defined by the user.
 
-    Give the local ``timezone`` (for example ``"Europe/Berlin"``) when the illumination check is
-    used: calendar days and solar noon follow it.
+    Give the local ``timezone`` (for example ``"Europe/Berlin"``): calendar days and solar noon
+    of the illumination criterion follow it. ``tiles`` are the Sentinel-2 tiles that cover the
+    station (for example ``("T32TMT",)``), empty to pair every product.
     """
+    tiles = tuple(str(t).upper() if str(t).upper().startswith("T") else "T" + str(t).upper() for t in tiles)
     return Station(str(code), name or str(code), float(lat), float(lon), float(altitude_m), timezone,
                    view_zenith_deg=float(view_zenith_deg),
-                   relative_azimuth_deg=float(relative_azimuth_deg), file_format=file_format)
+                   relative_azimuth_deg=float(relative_azimuth_deg), file_format=file_format, tiles=tiles)
 
 
 def parse_l1_filename(path) -> tuple[str | None, str | None, str | None]:
