@@ -296,7 +296,7 @@ The example data come from two archives, and the code combines three licences.
 ### Data
 
 - Greifensee and Lake Geneva (LéXPLORE platform, Wüest et al., 2021): WISPstation L1 data of Datalakes, https://www.datalakes-eawag.ch.
-- Lake Trasimeno: WISPstation L1 data of the WISPcloud of Water Insight, from the stations of CNR-IREA (Institute for Electromagnetic Sensing of the Environment, National Research Council of Italy). The measurements are available from CNR-IREA upon request. The example file serves the example run only.
+- Lake Trasimeno: WISPstation L1 data of the WISPcloud of Water Insight, from the stations of CNR-IREA (Institute for Electromagnetic Sensing of the Environment, National Research Council of Italy). The example file is shared with the consent of CNR-IREA.
 - WISPstation radiometer: Peters et al. (2018).
 
 ### Licences
